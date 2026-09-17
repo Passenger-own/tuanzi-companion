@@ -1,0 +1,324 @@
+{
+  "pet_name": "Fluffy Cat",
+  "version": "6.0.0",
+  "_comment": "全局底层核心规则定稿：冷却分层+专注关闭wave+全场景拖拽+场景限定动作+气泡交互+lie_back2轮+lie_side优化",
+  "canvas_size": { "width": 140, "height": 140 },
+  "style": "plush_toy",
+  "background": "transparent",
+  "accessories": ["pink_rabbit_hairpin", "pink_bow_heart_pendant"],
+  "default_action": "idle",
+
+  "priority": {
+    "_comment": "四级固定动画优先级（数字越大优先级越高，同一时间仅播放单段动画，多事件排队依次执行）",
+    "idle":     1,
+    "lie_side": 2,
+    "lie_back": 2,
+    "wave":     3,
+    "happy":    3,
+    "eat":      3,
+    "stretch":  3,
+    "sleep":    4
+  },
+
+  "cooldown_ms": {
+    "_comment": "冷却分层：点击交互无冷却，自动/悬浮动画带冷却",
+    "lie_back": 6000,
+    "eat":      3000,
+    "stretch":  3000,
+    "happy":    3000,
+    "wave":     0,
+    "idle":     0,
+    "lie_side": 0,
+    "sleep":    0
+  },
+
+  "global_rules": {
+    "_comment": "一、全局底层核心规则（严格落地所有需求）",
+    "calm_period_layered": {
+      "_comment": "冷却期分层规则：点击交互无冷却，自动/悬浮动画带冷静缓冲",
+      "click_interaction": {
+        "applies_to": ["single_click_drag", "double_click_chat", "triple_click_lie_back"],
+        "calm_period": "无1.5s全局冷静期，可连续重复触发，无操作限制",
+        "bypass_calm": true
+      },
+      "auto_animation": {
+        "applies_to": ["hover_wave", "system_eat", "system_happy", "system_stretch", "idle_auto_switch"],
+        "calm_period_ms": 1500,
+        "description": "播放完成后强制1.5s切换冷静期，避免画面频繁抖动切换"
+      }
+    },
+    "focus_mode_exit_wave": {
+      "enabled": true,
+      "description": "关闭任意专注模式瞬间，自动播放wave挥手过渡动画，动画结束后回归idle待机"
+    },
+    "drag_always_enabled": {
+      "enabled": true,
+      "description": "全场景拖拽永久生效：无论播放任意动画、开启任意专注模式、熟睡/侧躺状态，长按单击均可拖拽移动猫咪窗口，拖拽不会中断当前播放动画",
+      "applies_to_all_states": ["idle", "lie_side", "lie_back", "wave", "happy", "eat", "stretch", "sleep"],
+      "applies_to_all_modes": ["normal", "light_focus", "deep_focus"],
+      "drag_triggers_animation": false,
+      "drag_interrupts_current": false,
+      "after_drag": "维持原有动作状态，不切换动画"
+    },
+    "click_layering": {
+      "description": "点击交互分层区分，统一操作逻辑，全程区分点击用途，不会出现拖拽误触动画",
+      "single_click": "拖拽移动（无动画触发）",
+      "double_click": "唤起 AI 对话窗口，触发 wave 挥手动画（专注模式下不播 wave）",
+      "triple_click": "1秒内连续左键三击触发 lie_back 撒娇躺平动画（sleep 深度专注下失效，无冷却可连续触发）",
+      "detection_window_ms": 1000
+    },
+    "scene_limited_actions": {
+      "_comment": "场景限定动作约束：eat/stretch/sleep/lie_side仅在对应专属场景出现，不会随机乱触发",
+      "limited": {
+        "eat": "仅手动打卡喝水、喝水提醒弹窗时触发，闲置待机不会随机弹出",
+        "stretch": "仅久坐超时提醒、连续办公1小时未休息触发，正常办公待机不会随机播放",
+        "sleep": "仅深度免打扰/锁屏闲置触发，日常办公不会自动进入睡眠",
+        "lie_side": "仅轻度免打扰/长期无对话触发，闲置待机仅维持轻微idle动作"
+      },
+      "general": ["idle", "wave", "lie_back", "happy"],
+      "idle_rotation_pool": [],
+      "idle_rotation_note": "场景限定后 idle 60s 无交互不切换 lie_side/stretch/sleep，维持idle待机"
+    },
+    "event_queue": {
+      "enabled": true,
+      "description": "事件排队机制：多触发条件同时满足时，按优先级顺序依次播放，前一段动画完整播放结束+1.5s冷静期后，再执行下一段动画",
+      "sort_by_priority_desc": true,
+      "next_action_delay_ms": 1500,
+      "deduplicate_same_action": true
+    },
+    "auto_downgrade": {
+      "sleep_to_lie_side": "sleep 熟睡持续 10 分钟无操作 → 自动降级 lie_side",
+      "lie_side_to_idle": "lie_side 侧躺持续 15 分钟无交互 → 自动回归 idle"
+    }
+  },
+
+  "bubble": {
+    "_comment": "气泡交互统一规范：猫咪头顶弹出圆角半透明白色对话气泡，浅灰色柔和字体，单句文案2秒自动消失",
+    "enabled": true,
+    "duration_ms": 2000,
+    "bg_color": [255, 255, 255, 200],
+    "text_color": [90, 90, 90],
+    "rounded_radius": 12,
+    "position": "猫咪头顶正上方，跟随窗口移动",
+    "sync_with_animation": "动画播放全程同步展示气泡，不遮挡猫咪主体",
+    "texts": {
+      "idle":     ["乖乖等你忙完", "认真工作哦"],
+      "lie_back": ["快来摸摸我～", "陪我玩一会嘛"],
+      "lie_side": ["专心工作吧，我安静陪着你"],
+      "sleep":    ["zzz...", "好好休息一下"],
+      "wave":     ["你好呀", "终于理我啦"],
+      "happy":    ["太棒啦！", "你超厉害～"],
+      "eat":      ["多喝水，照顾好自己"],
+      "stretch":  ["休息一下好不好？", "坐太久啦，活动下"]
+    }
+  },
+
+  "focus_mode": {
+    "_comment": "专注模式专属逻辑",
+    "blocked_actions": ["wave"],
+    "blocked_scenarios": {
+      "hover_wave": "永久屏蔽鼠标悬浮触发 wave 挥手",
+      "double_click_wave": "双击打开对话时不播 wave 挥手动画"
+    },
+    "kept_interactions": {
+      "drag_move": "长按拖拽移动猫咪 全程可用",
+      "double_click_chat": "双击打开 AI 对话窗口 功能保留（仅不播 wave）",
+      "triple_click_lie_back": "三击触发 lie_back 撒娇（轻度专注可用，深度 sleep 下失效）",
+      "checkin_happy": "打卡触发 happy 开心动画 正常生效",
+      "checkin_eat": "打卡/提醒触发 eat 喝水动画 任意专注模式均可正常触发",
+      "checkin_stretch": "打卡/提醒触发 stretch 伸懒腰 任意专注模式均可正常触发",
+      "office_tools": "计算器/随笔等办公功能均可正常使用"
+    },
+    "light_focus": {
+      "action": "lie_side",
+      "name": "轻度免打扰",
+      "blocks": ["wave"],
+      "keeps": ["lie_back", "happy", "eat", "stretch", "drag", "double_click_chat", "office_tools"],
+      "auto_exit": "持续15分钟无任何用户交互自动降级回归idle",
+      "manual_exit_wave": "手动关闭轻度免打扰，立刻播放wave挥手过渡动画"
+    },
+    "deep_focus": {
+      "action": "sleep",
+      "name": "全天深度免打扰",
+      "blocks": ["wave", "lie_back", "happy", "eat", "stretch"],
+      "keeps": ["drag", "double_click_chat_no_wave", "office_tools"],
+      "auto_exit": "10分钟无交互自动降级lie_side",
+      "manual_exit_wave": "关闭深度专注自动播放wave过渡动画",
+      "wake": "鼠标拖拽/点击唤醒；唤醒后先 wave 过渡，冷静期结束回归 idle"
+    },
+    "exit_wave": "关闭任意专注模式瞬间自动播放 wave 挥手过渡动画，动画结束后回归 idle"
+  },
+
+  "lie_back_optimization": {
+    "_comment": "lie_back 仰躺撒娇交互优化",
+    "trigger": "1秒内左键三连击、亲密度升级瞬间触发",
+    "click_no_cooldown": "点击操作无冷却，可连续多次三连击",
+    "loop_count": 2,
+    "loop_rule": "单次触发完整循环2轮后自动切回idle，不会无限维持躺平姿态",
+    "state_limit": "深度sleep熟睡状态下三连击无响应，轻度免打扰lie_side状态可正常触发",
+    "bubble": ["快来摸摸我～", "陪我玩一会嘛"]
+  },
+
+  "lie_side_optimization": {
+    "_comment": "lie_side 侧躺轻度专注优化",
+    "trigger": "手动开启轻度免打扰、持续10分钟未对话自动切换",
+    "interaction_limit": "仅屏蔽鼠标悬浮wave挥手，双击对话、三连击撒娇、拖拽、打卡类动画全部正常可用",
+    "auto_exit": "持续15分钟无任何用户交互，自动降级回归idle待机",
+    "exit_transition": "手动关闭轻度免打扰，立刻播放wave挥手过渡动画",
+    "bubble": ["专心工作吧，我安静陪着你"]
+  },
+
+  "mutex": {
+    "sleep_blocked_actions": ["wave", "happy", "eat", "stretch", "lie_back", "lie_side"],
+    "lie_side_blocked_actions": ["wave"]
+  },
+
+  "transitions": {
+    "auto_return_to_idle": true,
+    "sleep_wake_sequence": ["wave", "idle"],
+    "focus_exit_wave_sequence": ["wave", "idle"],
+    "wave_leave_returns_to_idle": true,
+    "dnd_returns_to_sleep": true,
+    "focus_returns_to_lie_side": true,
+    "lie_back_auto_return_after_2_loops": true
+  },
+
+  "trigger_rules": {
+    "idle_timeout_ms": 30000,
+    "sleep_timeout_ms": 300000,
+    "no_chat_timeout_ms": 600000,
+    "triple_click_count": 3,
+    "triple_click_window_ms": 1000,
+    "lie_back_loop_count": 2,
+    "intimacy_enabled": true
+  },
+
+  "actions": {
+    "idle": {
+      "name": "基础待机",
+      "priority": 1,
+      "loop": true,
+      "description": "端正坐着，身体随呼吸轻微起伏，缓慢左右轻晃脑袋，偶尔缓慢眨眼，乖巧安静，匹配参考图左上坐姿小猫",
+      "trigger": {
+        "events": ["on_idle_short", "auto_return", "post_sleep_wake", "post_lie_side_exit", "post_lie_back_2_loops"],
+        "condition": "程序初始化默认状态；所有动画播放完毕+冷静期结束自动回归；电脑闲置30s无交互常驻；sleep/lie_side退出基准状态"
+      },
+      "runtime": "idle视频默认循环播放；点击拖拽、双击、三连击无冷却直接打断待机动画；无场景限制，全程常驻基础状态",
+      "bubble": ["乖乖等你忙完", "认真工作哦"],
+      "scene_type": "general"
+    },
+    "lie_back": {
+      "name": "仰躺撒娇",
+      "priority": 2,
+      "loop": true,
+      "cooldown_ms": 0,
+      "description": "仰面躺倒，粉肉垫小爪子朝上，肚子微微起伏，慵懒放松，偶尔蹬一下小爪子，匹配参考图中上仰躺姿态",
+      "trigger": {
+        "events": ["on_triple_click", "on_intimacy_up"],
+        "condition": "1秒内连续左键三击猫咪；亲密度等级瞬间提升",
+        "click_count": 3,
+        "click_window_ms": 1000
+      },
+      "runtime": "点击交互无冷却，可连续多次三连击；sleep熟睡状态下失效；单次播放2轮自动返回idle；全场景支持拖拽",
+      "bubble": ["快来摸摸我～", "陪我玩一会嘛"],
+      "loop_count": 2,
+      "scene_type": "general"
+    },
+    "lie_side": {
+      "name": "侧躺放松（轻度专注限定场景）",
+      "priority": 2,
+      "loop": true,
+      "description": "四肢舒展侧趴地面，脑袋轻轻搭在前爪上，缓慢闭眼睁眼，慵懒安静，匹配参考图右上侧躺小猫",
+      "trigger": {
+        "events": ["on_focus_mode", "on_no_chat_long"],
+        "condition": "手动开启轻度免打扰；持续10分钟未与猫咪对话自动切换",
+        "no_chat_timeout_ms": 600000
+      },
+      "runtime": "限定专注场景触发，正常办公待机不会随机出现；屏蔽悬浮wave；双击、三连击、拖拽、打卡动画可用；15分钟无交互自动回idle；关闭专注自动播放wave",
+      "bubble": ["专心工作吧，我安静陪着你"],
+      "scene_type": "limited"
+    },
+    "sleep": {
+      "name": "蜷缩熟睡（深度专注限定场景，最高级不可打断）",
+      "priority": 4,
+      "loop": true,
+      "description": "团成小圆球闭眼睡觉，呼吸轻微起伏，偶尔轻轻抖一下耳朵，全程紧闭双眼，匹配参考图左下蜷缩睡姿",
+      "trigger": {
+        "events": ["on_dnd_mode", "on_idle_long"],
+        "condition": "开启全天深度免打扰；电脑锁屏闲置5分钟自动进入",
+        "sleep_timeout_ms": 300000
+      },
+      "runtime": "仅深度免打扰/锁屏触发，日常办公不会自动睡眠；屏蔽wave、lie_back、happy、eat、stretch所有主动交互动画；仅拖拽、点击可唤醒；10分钟无交互自动降级lie_side；关闭深度专注自动播放wave过渡",
+      "bubble": ["zzz...", "好好休息一下"],
+      "wake_sequence": ["wave", "idle"],
+      "block_all": true,
+      "scene_type": "limited"
+    },
+    "wave": {
+      "name": "单爪挥手打招呼",
+      "priority": 3,
+      "loop": false,
+      "description": "端正站立，抬起单侧小粉爪缓慢上下挥动，轻轻歪头眨眼，温柔互动，匹配参考图右下单爪挥手小猫",
+      "trigger": {
+        "events": ["on_hover", "on_chat_open", "on_launch", "sleep_wake", "focus_exit"],
+        "condition": "鼠标悬浮猫咪、双击打开AI对话窗口、关闭任意专注模式自动触发"
+      },
+      "runtime": "专注模式开启时悬浮触发完全禁用；仅退出专注自动触发一次；鼠标悬浮属于自动动画，结束附带1.5s冷静期；双击触发无冷却",
+      "bubble": ["你好呀", "终于理我啦"],
+      "hard_block_in_focus": true,
+      "leave_terminates": true,
+      "scene_type": "general"
+    },
+    "happy": {
+      "name": "双爪举起开心",
+      "priority": 3,
+      "loop": false,
+      "cooldown_ms": 3000,
+      "description": "直立坐好，两只小爪子全部向上举起，轻轻晃动爪子，微微仰头，活泼可爱，匹配参考图右下双爪小猫",
+      "trigger": {
+        "events": ["on_rest_log", "on_intimacy_up", "on_chat_end"],
+        "condition": "喝水打卡、休息打卡确认、亲密度上涨、AI对话结束收到暖心回复"
+      },
+      "runtime": "不限定专属场景，任意模式打卡均可触发；系统自动动画，3s冷却+1.5s全局冷静期；全程支持拖拽",
+      "bubble": ["太棒啦！", "你超厉害～"],
+      "scene_type": "general"
+    },
+    "eat": {
+      "name": "低头喝水（喝水提醒专属限定场景）",
+      "priority": 3,
+      "loop": false,
+      "cooldown_ms": 3000,
+      "description": "微微低头，嘴巴轻碰前方水碗，头部小幅上下晃动，喝完抬脸舔一下嘴巴",
+      "trigger": {
+        "events": ["on_water_log", "on_reminder_water"],
+        "condition": "用户手动记录喝水、系统弹出喝水提醒弹窗"
+      },
+      "runtime": "仅喝水事件触发，闲置待机不会随机播放；系统自动动画，3s冷却+1.5s全局冷静期；所有专注模式均可触发；统一140px标准尺寸无缩放偏差",
+      "bubble": ["多喝水，照顾好自己"],
+      "scene_type": "limited"
+    },
+    "stretch": {
+      "name": "犯困伸懒腰蹭屏幕（久坐超时专属限定场景）",
+      "priority": 3,
+      "loop": false,
+      "cooldown_ms": 3000,
+      "description": "先打哈欠眯起眼睛，前爪向前拉伸伸懒腰，身体舒展，随后脑袋轻轻左右蹭画面边缘，慵懒犯困状态",
+      "trigger": {
+        "events": ["on_reminder_sit"],
+        "condition": "久坐超时提醒弹窗、连续办公满1小时未休息打卡"
+      },
+      "runtime": "仅久坐提醒触发，正常办公待机不会随机出现；系统自动动画，3s冷却+1.5s全局冷静期；任意专注模式可触发；全部素材统一140px尺寸，消除画面偏小问题",
+      "bubble": ["休息一下好不好？", "坐太久啦，活动下"],
+      "scene_type": "limited"
+    }
+  },
+
+  "runtime_guarantees": {
+    "assets_unchanged": "9套猫咪3D模型、动作姿态、贴图、配饰完全不修改",
+    "business_code_unchanged": "后端、AI对话、打卡提醒、数据存储、窗口底层渲染代码原样保留",
+    "window_features": "维持原有悬浮窗口拖拽、穿透、置顶功能",
+    "asset_size_uniform": "全部素材统一140px标准尺寸，无缩放偏差",
+    "memory_limit_mb": 80,
+    "animation_quality": "所有动画切换顺滑无穿模、无卡顿、无逻辑冲突"
+  }
+}
